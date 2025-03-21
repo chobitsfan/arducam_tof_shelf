@@ -1,6 +1,7 @@
 import rclpy, cv2, math, socket, os, struct
 import numpy as np
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 from sensor_msgs.msg import Image
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point, PoseStamped
@@ -46,10 +47,11 @@ struct_width_max_px = struct_width_m * fy / struct_dist_m + 5 # margin = 5px
 
 rclpy.init()
 node = rclpy.create_node('tof')
-img_pub = node.create_publisher(Image, "depth_image", 1)
+my_qos = QoSProfile(depth=1, reliability=QoSReliabilityPolicy.BEST_EFFORT, durability=QoSDurabilityPolicy.VOLATILE)
+img_pub = node.create_publisher(Image, "depth_image", my_qos)
 #img_pub2 = node.create_publisher(Image, "edge_image", 1)
 lines_pub = node.create_publisher(Marker, "struct_lines", 1)
-pp_pub = node.create_publisher(PointCloud2, "point_cloud", 1)
+hori_pc_pub = node.create_publisher(PointCloud2, "hori_points", 1)
 roll_sub = node.create_subscription(Float32, "roll", roll_callback, 1)
 hori_pub = node.create_publisher(Path, "hori_line", 1)
 
@@ -181,7 +183,7 @@ while rclpy.ok():
 
                 pp_3d = [(d * 0.001, (120 - p[1]) / fx * (d * 0.001), (90 - p[0]) / fy * (d * 0.001)) for p in pp if bin_edges[max_i] <= (d := depth_u16[p[0], p[1]]) <= bin_edges[max_i + 1]]
 
-                pp_pub.publish(point_cloud2.create_cloud_xyz32(header, pp_3d))
+                hori_pc_pub.publish(point_cloud2.create_cloud_xyz32(header, pp_3d))
 
                 l = cv2.fitLine(np.array(pp_3d), cv2.DIST_L2, 0, 0.01, 0.01)
                 x = l[3].item(0)
