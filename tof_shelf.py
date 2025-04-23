@@ -1,15 +1,14 @@
-import rclpy, cv2, math, socket, os, struct
+import rclpy, cv2, math
 import numpy as np
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 from sensor_msgs.msg import Image
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point, PoseStamped
+from geometry_msgs.msg import Point, Polygon, Point32
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from std_msgs.msg import Float32
-from nav_msgs.msg import Path
 import ArducamDepthCamera as ac
 
 cos_max_tilt = math.cos(10 * math.pi / 180)
@@ -53,7 +52,7 @@ img_pub = node.create_publisher(Image, "depth_image", my_qos)
 lines_pub = node.create_publisher(Marker, "struct_lines", 1)
 hori_pc_pub = node.create_publisher(PointCloud2, "hori_points", 1)
 roll_sub = node.create_subscription(Float32, "roll", roll_callback, 1)
-hori_pub = node.create_publisher(Path, "hori_line", 1)
+hori_pub = node.create_publisher(Polygon, "hori_line", 1)
 
 print("arducam sdk ver", ac.__version__)
 
@@ -74,12 +73,6 @@ tof.setControl(ac.Control.RANGE, 4)
 info = tof.getCameraInfo()
 print(f"tof resolution: {info.width}x{info.height}")
 
-socket_file = '/tmp/chobits_589361'
-dest_socket_file = '/tmp/chobits_server2'
-if os.path.exists(socket_file):
-    os.remove(socket_file)
-sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-sock.bind(socket_file)
 
 skip_c = 0;
 #kernel = np.ones((5,5),np.uint8)
@@ -150,7 +143,8 @@ while rclpy.ok():
 #                    cv2.line(edge_img, (x1, y1), (x2, y2), (255,0,0), 1, cv2.LINE_8)
 
             if hori_line is None:
-                hori_struct = (0,) * 6
+                hori_struct = Polygon()
+                hori_struct.points = [Point32(), Point32()]
 
 #                if lines_y is not None:
 #                    for line in lines_y:
@@ -158,20 +152,6 @@ while rclpy.ok():
 #                        cv2.line(edge_img, (x1, y1), (x2, y2), (255,255,255), 1, cv2.LINE_8)
             else:
                 x1, y1, x2, y2 = hori_line
-
-                path_msg = Path()
-                path_msg.header = header
-                p1 = PoseStamped()
-                p1.header = header
-                p1.pose.position.x = float(x1)
-                p1.pose.position.y = float(y1)
-                path_msg.poses.append(p1)
-                p2 = PoseStamped()
-                p2.header = header
-                p2.pose.position.x = float(x2)
-                p2.pose.position.y = float(y2)
-                path_msg.poses.append(p2)
-                hori_pub.publish(path_msg)
 
 #                cv2.line(edge_img, (x1, y1), (x2, y2), (255,0,0), 1, cv2.LINE_8)
 
@@ -192,7 +172,16 @@ while rclpy.ok():
                 vx = l[0].item(0)
                 vy = l[1].item(0)
                 vz = l[2].item(0)
-                hori_struct = (x, y, z, vx, vy ,vz)
+                p = Point32()
+                p.x = x
+                p.y = y
+                p.z = z
+                v = Point32()
+                v.x = vx
+                v.y = vy
+                v.z = vz
+                hori_struct = Polygon()
+                hori_struct.points = [p, v]
                 struct_dist_m = x
 
                 line_list = Marker()
@@ -218,10 +207,7 @@ while rclpy.ok():
                 line_list.points.append(p)
                 lines_pub.publish(line_list)
 
-            try:
-                sock.sendto(struct.pack('ffffff', *hori_struct), dest_socket_file)
-            except FileNotFoundError:
-                pass
+            hori_pub.publish(hori_struct);
 
 #            img.header = header
 #            img.encoding = "bgr8"
@@ -233,9 +219,6 @@ while rclpy.ok():
 
 tof.stop()
 tof.close()
-
-sock.close()
-os.remove(socket_file)
 
 rclpy.try_shutdown()
 
