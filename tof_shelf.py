@@ -51,7 +51,7 @@ img_pub = node.create_publisher(Image, "depth_image", my_qos)
 #img_pub2 = node.create_publisher(Image, "edge_image", 1)
 lines_pub = node.create_publisher(Marker, "struct_lines", 1)
 hori_pc_pub = node.create_publisher(PointCloud2, "hori_points", 1)
-roll_sub = node.create_subscription(Float32, "roll", roll_callback, 1)
+roll_sub = node.create_subscription(Float32, "roll", roll_callback, my_qos)
 hori_pub = node.create_publisher(Polygon, "hori_line", 1)
 
 print("arducam sdk ver", ac.__version__)
