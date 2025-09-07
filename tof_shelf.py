@@ -52,8 +52,7 @@ img_pub = node.create_publisher(Image, "depth_image", my_qos)
 lines_pub = node.create_publisher(Marker, "struct_lines", my_qos)
 #hori_pc_pub = node.create_publisher(PointCloud2, "hori_points", my_qos)
 roll_sub = node.create_subscription(Float32, "roll", roll_callback, my_qos)
-hori_pub = node.create_publisher(Polygon, "hori_line", 1)
-vert_pub = node.create_publisher(Polygon, "vert_line", 1)
+vert_hori_pub = node.create_publisher(Polygon, "vert_hori_line", 1)
 
 print("arducam sdk ver", ac.__version__)
 
@@ -176,8 +175,11 @@ while rclpy.ok():
 #                    cv2.line(edge_img, (x1, y1), (x2, y2), (255,0,0), 1, cv2.LINE_8)
 
             line_list_points = []
+            vert_hori_points = []
 
-            if vert_lines is not None:
+            if vert_lines is None:
+                vert_hori_points = [Point32(), Point32()]
+            else:
                 pl, nl = vert_lines
                 pp = np.linspace(np.array([pl[1], (pl[0]+nl[0])/2]), np.array([pl[3], (pl[2]+nl[2])/2]), num=50).astype(np.int32) # opencv y, x for numpy row, col
                 ds = depth_u16[tuple(pp.T)]
@@ -201,9 +203,7 @@ while rclpy.ok():
                 v.x = vx
                 v.y = vy
                 v.z = vz
-                vert_struct = Polygon()
-                vert_struct.points = [p, v]
-                vert_pub.publish(vert_struct)
+                vert_hori_points = [p, v]
 
                 p = Point()
                 p.x = x - vx
@@ -217,9 +217,8 @@ while rclpy.ok():
                 line_list_points.append(p)
 
             if hori_line is None:
-                hori_struct = Polygon()
-                hori_struct.points = [Point32(), Point32()]
-                hori_pub.publish(hori_struct);
+                vert_hori_points.append(Point32())
+                vert_hori_points.append(Point32())
 #                if lines_y is not None:
 #                    for line in lines_y:
 #                        x1, y1, x2, y2 = line[0]
@@ -245,13 +244,15 @@ while rclpy.ok():
                 p.x = x
                 p.y = y
                 p.z = z
+                vert_hori_points.append(p)
                 v = Point32()
                 v.x = vx
                 v.y = vy
                 v.z = vz
-                hori_struct = Polygon()
-                hori_struct.points = [p, v]
-                hori_pub.publish(hori_struct)
+                vert_hori_points.append(v)
+                vert_hori_struct = Polygon()
+                vert_hori_struct.points = vert_hori_points
+                vert_hori_pub.publish(vert_hori_struct)
 
                 p = Point()
                 p.x = x - vx
@@ -276,7 +277,8 @@ while rclpy.ok():
                 line_list.color.g = 1.0
                 line_list.color.a = 1.0
                 line_list.lifetime.sec = 1
-                lines_pub.publish(line_list_points)
+                line_list.points = line_list_points
+                lines_pub.publish(line_list)
 
 #            img.header = header
 #            img.encoding = "bgr8"
