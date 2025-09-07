@@ -49,10 +49,11 @@ node = rclpy.create_node('tof')
 my_qos = QoSProfile(depth=1, reliability=QoSReliabilityPolicy.BEST_EFFORT, durability=QoSDurabilityPolicy.VOLATILE)
 img_pub = node.create_publisher(Image, "depth_image", my_qos)
 #img_pub2 = node.create_publisher(Image, "edge_image", 1)
-lines_pub = node.create_publisher(Marker, "struct_lines", 1)
-hori_pc_pub = node.create_publisher(PointCloud2, "hori_points", 1)
+lines_pub = node.create_publisher(Marker, "struct_lines", my_qos)
+#hori_pc_pub = node.create_publisher(PointCloud2, "hori_points", my_qos)
 roll_sub = node.create_subscription(Float32, "roll", roll_callback, my_qos)
 hori_pub = node.create_publisher(Polygon, "hori_line", 1)
+vert_pub = node.create_publisher(Polygon, "vert_line", 1)
 
 print("arducam sdk ver", ac.__version__)
 
@@ -116,6 +117,38 @@ while rclpy.ok():
 
             #edge_img = np.zeros((180, 240, 3), dtype=np.uint8)
 
+            # detect vertical structures
+            grad = cv2.Sobel(depth_u16, cv2.CV_16S, 1, 0, -1)
+            ret, grad_thresh = cv2.threshold(grad, GRAD_THRESH, 255, cv2.THRESH_BINARY)
+            grad_u8 = grad_thresh.astype(np.uint8)
+            lines_x_p = cv2.HoughLinesP(grad_u8, 1, np.pi/180, 50, None, 50, 5)
+#            if lines_x_p is not None:
+#                for line in lines_x_p:
+#                    l = line[0]
+#                    cv2.line(edge_img, (l[0], l[1]), (l[2], l[3]), (128,255,255), 1, cv2.LINE_8)
+            ret, grad_thresh = cv2.threshold(grad, -GRAD_THRESH, 255, cv2.THRESH_BINARY_INV);
+            grad_u8 = grad_thresh.astype(np.uint8)
+            lines_x_n = cv2.HoughLinesP(grad_u8, 1, np.pi/180, 50, None, 50, 5)
+#            if lines_x_n is not None:
+#                for line in lines_x_n:
+#                    l = line[0]
+#                    cv2.line(edge_img, (l[0], l[1]), (l[2], l[3]), (128,255,255), 1, cv2.LINE_8)
+            vert_lines = None
+            if lines_x_p is not None and lines_x_n is not None:
+                # Precompute swapped coordinates for both lines_x_p and lines_x_n
+                ok_lines_x_p = [ok_line for line in lines_x_p if (ok_line := swap_coordinates_filter_tilt(line[0])) is not None]
+                ok_lines_x_n = [ok_line for line in lines_x_n if (ok_line := swap_coordinates_filter_tilt(line[0])) is not None]
+                for pl in ok_lines_x_p:
+                    for nl in ok_lines_x_n:
+                        dx = pl[0] - nl[0]
+                        dy = pl[1] - nl[1]
+                        # only select vertical lines which postive & negative edges close enough
+                        if 2 < dx < struct_width_max_px and abs(dy) < 20:
+                            vert_lines = (pl, nl)
+                            break
+                    if vert_lines is not None:
+                        break
+
             # detect horizontal structures
             grad = cv2.Sobel(depth_u16, cv2.CV_16S, 0, 1, -1)
             ret, grad_thresh = cv2.threshold(grad, GRAD_THRESH, 255, cv2.THRESH_BINARY)
@@ -142,28 +175,64 @@ while rclpy.ok():
                         hori_line = (x1, y1, x2, y2)
 #                    cv2.line(edge_img, (x1, y1), (x2, y2), (255,0,0), 1, cv2.LINE_8)
 
+            line_list_points = []
+
+            if vert_lines is not None:
+                pl, nl = vert_lines
+                pp = np.linspace(np.array([pl[1], (pl[0]+nl[0])/2]), np.array([pl[3], (pl[2]+nl[2])/2]), num=50).astype(np.int32) # opencv y, x for numpy row, col
+                ds = depth_u16[tuple(pp.T)]
+                hist, bin_edges = np.histogram(ds, bins=4)
+                max_i = np.argmax(hist)
+                pp_3d = [(d * 0.001, (120 - p[1]) / fx * (d * 0.001), (90 - p[0]) / fy * (d * 0.001)) for p in pp if bin_edges[max_i] <= (d := depth_u16[p[0], p[1]]) <= bin_edges[max_i + 1]]
+
+                l = cv2.fitLine(np.array(pp_3d), cv2.DIST_L2, 0, 0.01, 0.01)
+                x = l[3].item(0)
+                y = l[4].item(0)
+                z = l[5].item(0)
+                vx = l[0].item(0)
+                vy = l[1].item(0)
+                vz = l[2].item(0)
+                struct_dist_m = x
+                p = Point32()
+                p.x = x
+                p.y = y
+                p.z = z
+                v = Point32()
+                v.x = vx
+                v.y = vy
+                v.z = vz
+                vert_struct = Polygon()
+                vert_struct.points = [p, v]
+                vert_pub.publish(vert_struct)
+
+                p = Point()
+                p.x = x - vx
+                p.y = y - vy
+                p.z = z - vz
+                line_list_points.append(p)
+                p = Point()
+                p.x = x + vx
+                p.y = y + vy
+                p.z = z + vz
+                line_list_points.append(p)
+
             if hori_line is None:
                 hori_struct = Polygon()
                 hori_struct.points = [Point32(), Point32()]
-
+                hori_pub.publish(hori_struct);
 #                if lines_y is not None:
 #                    for line in lines_y:
 #                        x1, y1, x2, y2 = line[0]
 #                        cv2.line(edge_img, (x1, y1), (x2, y2), (255,255,255), 1, cv2.LINE_8)
             else:
                 x1, y1, x2, y2 = hori_line
-
 #                cv2.line(edge_img, (x1, y1), (x2, y2), (255,0,0), 1, cv2.LINE_8)
-
                 pp = np.linspace(np.array([y1-3, x1]), np.array([y2-3, x2]), num=50).astype(np.int32) # opencv y, x for numpy row, col
-
                 ds = depth_u16[tuple(pp.T)]
                 hist, bin_edges = np.histogram(ds, bins=4)
                 max_i = np.argmax(hist)
-
                 pp_3d = [(d * 0.001, (120 - p[1]) / fx * (d * 0.001), (90 - p[0]) / fy * (d * 0.001)) for p in pp if bin_edges[max_i] <= (d := depth_u16[p[0], p[1]]) <= bin_edges[max_i + 1]]
-
-                hori_pc_pub.publish(point_cloud2.create_cloud_xyz32(header, pp_3d))
+                #hori_pc_pub.publish(point_cloud2.create_cloud_xyz32(header, pp_3d))
 
                 l = cv2.fitLine(np.array(pp_3d), cv2.DIST_L2, 0, 0.01, 0.01)
                 x = l[3].item(0)
@@ -182,8 +251,20 @@ while rclpy.ok():
                 v.z = vz
                 hori_struct = Polygon()
                 hori_struct.points = [p, v]
-                struct_dist_m = x
+                hori_pub.publish(hori_struct)
 
+                p = Point()
+                p.x = x - vx
+                p.y = y - vy
+                p.z = z - vz
+                line_list_points.append(p)
+                p = Point()
+                p.x = x + vx
+                p.y = y + vy
+                p.z = z + vz
+                line_list_points.append(p)
+            
+            if not line_list_points:
                 line_list = Marker()
                 line_list.header = header
                 line_list.action = Marker.ADD
@@ -191,23 +272,11 @@ while rclpy.ok():
                 line_list.id = 1
                 line_list.pose.orientation.w = 1.0 # 1.0, NOT 1
                 line_list.scale.x = 0.05
-                line_list.ns = "hori_struct"
+                line_list.ns = "struct"
                 line_list.color.g = 1.0
                 line_list.color.a = 1.0
                 line_list.lifetime.sec = 1
-                p = Point()
-                p.x = x - vx
-                p.y = y - vy
-                p.z = z - vz
-                line_list.points.append(p)
-                p = Point()
-                p.x = x + vx
-                p.y = y + vy
-                p.z = z + vz
-                line_list.points.append(p)
-                lines_pub.publish(line_list)
-
-            hori_pub.publish(hori_struct);
+                lines_pub.publish(line_list_points)
 
 #            img.header = header
 #            img.encoding = "bgr8"
