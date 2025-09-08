@@ -264,8 +264,8 @@ while rclpy.ok():
                 p.y = y + vy
                 p.z = z + vz
                 line_list_points.append(p)
-            
-            if not line_list_points:
+
+            if line_list_points:
                 line_list = Marker()
                 line_list.header = header
                 line_list.action = Marker.ADD
