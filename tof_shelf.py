@@ -1,4 +1,4 @@
-import rclpy, cv2, math
+import rclpy, cv2, math, time
 import numpy as np
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
@@ -97,7 +97,9 @@ while rclpy.ok():
 
             header = Header()
             header.frame_id = "body"
-            header.stamp = node.get_clock().now().to_msg()
+            now_ns = time.monotonic_ns()
+            header.stamp.sec = now_ns // 1_000_000_000
+            header.stamp.nanosec = now_ns % 1_000_000_000
             img = Image()
             img.header = header
             img.height = 180
