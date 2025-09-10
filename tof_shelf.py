@@ -252,9 +252,6 @@ while rclpy.ok():
                 v.y = vy
                 v.z = vz
                 vert_hori_points.append(v)
-                vert_hori_struct = Polygon()
-                vert_hori_struct.points = vert_hori_points
-                vert_hori_pub.publish(vert_hori_struct)
 
                 p = Point()
                 p.x = x - vx
@@ -266,6 +263,10 @@ while rclpy.ok():
                 p.y = y + vy
                 p.z = z + vz
                 line_list_points.append(p)
+
+            vert_hori_struct = Polygon()
+            vert_hori_struct.points = vert_hori_points
+            vert_hori_pub.publish(vert_hori_struct)
 
             if line_list_points:
                 line_list = Marker()
