@@ -228,41 +228,45 @@ while rclpy.ok():
             else:
                 x1, y1, x2, y2 = hori_line
 #                cv2.line(edge_img, (x1, y1), (x2, y2), (255,0,0), 1, cv2.LINE_8)
-                pp = np.linspace(np.array([y1-3, x1]), np.array([y2-3, x2]), num=50).astype(np.int32) # opencv y, x for numpy row, col
-                ds = depth_u16[tuple(pp.T)]
-                hist, bin_edges = np.histogram(ds, bins=4)
-                max_i = np.argmax(hist)
-                pp_3d = [(d * 0.001, (120 - p[1]) / fx * (d * 0.001), (90 - p[0]) / fy * (d * 0.001)) for p in pp if bin_edges[max_i] <= (d := depth_u16[p[0], p[1]]) <= bin_edges[max_i + 1]]
-                #hori_pc_pub.publish(point_cloud2.create_cloud_xyz32(header, pp_3d))
+                if y1 >= 3 and y2 >= 3:
+                    pp = np.linspace(np.array([y1-3, x1]), np.array([y2-3, x2]), num=50).astype(np.int32) # opencv y, x for numpy row, col
+                    ds = depth_u16[tuple(pp.T)]
+                    hist, bin_edges = np.histogram(ds, bins=4)
+                    max_i = np.argmax(hist)
+                    pp_3d = [(d * 0.001, (120 - p[1]) / fx * (d * 0.001), (90 - p[0]) / fy * (d * 0.001)) for p in pp if bin_edges[max_i] <= (d := depth_u16[p[0], p[1]]) <= bin_edges[max_i + 1]]
+                    #hori_pc_pub.publish(point_cloud2.create_cloud_xyz32(header, pp_3d))
 
-                l = cv2.fitLine(np.array(pp_3d), cv2.DIST_L2, 0, 0.01, 0.01)
-                x = l[3].item(0)
-                y = l[4].item(0)
-                z = l[5].item(0)
-                vx = l[0].item(0)
-                vy = l[1].item(0)
-                vz = l[2].item(0)
-                p = Point32()
-                p.x = x
-                p.y = y
-                p.z = z
-                vert_hori_points.append(p)
-                v = Point32()
-                v.x = vx
-                v.y = vy
-                v.z = vz
-                vert_hori_points.append(v)
+                    l = cv2.fitLine(np.array(pp_3d), cv2.DIST_L2, 0, 0.01, 0.01)
+                    x = l[3].item(0)
+                    y = l[4].item(0)
+                    z = l[5].item(0)
+                    vx = l[0].item(0)
+                    vy = l[1].item(0)
+                    vz = l[2].item(0)
+                    p = Point32()
+                    p.x = x
+                    p.y = y
+                    p.z = z
+                    vert_hori_points.append(p)
+                    v = Point32()
+                    v.x = vx
+                    v.y = vy
+                    v.z = vz
+                    vert_hori_points.append(v)
 
-                p = Point()
-                p.x = x - vx
-                p.y = y - vy
-                p.z = z - vz
-                line_list_points.append(p)
-                p = Point()
-                p.x = x + vx
-                p.y = y + vy
-                p.z = z + vz
-                line_list_points.append(p)
+                    p = Point()
+                    p.x = x - vx
+                    p.y = y - vy
+                    p.z = z - vz
+                    line_list_points.append(p)
+                    p = Point()
+                    p.x = x + vx
+                    p.y = y + vy
+                    p.z = z + vz
+                    line_list_points.append(p)
+                else:
+                    vert_hori_points.append(Point32())
+                    vert_hori_points.append(Point32())
 
             vert_hori_struct = Polygon()
             vert_hori_struct.points = vert_hori_points
