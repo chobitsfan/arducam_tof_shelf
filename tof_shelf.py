@@ -231,9 +231,11 @@ while rclpy.ok():
                 if y1 >= 3 and y2 >= 3:
                     m = (y2 - y1) / (x2 - x1)
                     b = y1 - m * x1
-                    n_y1 = m * 100 + b
-                    n_y2 = m * 140 + b
-                    pp = np.linspace(np.array([n_y1-3, 100]), np.array([n_y2-3, 140]), num=20).astype(np.int32) # opencv y, x for numpy row, col
+                    n_y1 = m * 90 + b
+                    n_y2 = m * 150 + b
+                    pp = np.linspace(np.array([n_y1-3, 90]), np.array([n_y2-3, 150]), num=20).astype(np.int32) # opencv y, x for numpy row, col
+                    pp[:,0] = np.clip(pp[:,0], 0, 180-1)
+                    pp[:,1] = np.clip(pp[:,1], 0, 240-1)
                     #pp = np.linspace(np.array([y1-3, x1]), np.array([y2-3, x2]), num=50).astype(np.int32) # opencv y, x for numpy row, col
                     #ds = depth_u16[tuple(pp.T)]
                     #hist, bin_edges = np.histogram(ds, bins=4)
