@@ -4,7 +4,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
 from sensor_msgs.msg import Image
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point, Polygon, Point32
+from geometry_msgs.msg import Point, PolygonStamped, Point32
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
@@ -52,7 +52,7 @@ img_pub = node.create_publisher(Image, "depth_image", my_qos)
 lines_pub = node.create_publisher(Marker, "struct_lines", my_qos)
 #hori_pc_pub = node.create_publisher(PointCloud2, "hori_points", my_qos)
 roll_sub = node.create_subscription(Float32, "roll", roll_callback, my_qos)
-vert_hori_pub = node.create_publisher(Polygon, "vert_hori_line", 1)
+vert_hori_pub = node.create_publisher(PolygonStamped, "vert_hori_line", 1)
 
 print("arducam sdk ver", ac.__version__)
 
@@ -86,7 +86,7 @@ while rclpy.ok():
         break
     if frame is not None and isinstance(frame, ac.DepthData):
         skip_c += 1
-        if skip_c > 5:
+        if skip_c > 1:
             skip_c = 0
             depth_buf = frame.depth_data
             confidence_buf = frame.confidence_data
@@ -274,8 +274,9 @@ while rclpy.ok():
                     vert_hori_points.append(Point32())
                     vert_hori_points.append(Point32())
 
-            vert_hori_struct = Polygon()
-            vert_hori_struct.points = vert_hori_points
+            vert_hori_struct = PolygonStamped()
+            vert_hori_struct.header = header
+            vert_hori_struct.polygon.points = vert_hori_points
             vert_hori_pub.publish(vert_hori_struct)
 
             if line_list_points:
