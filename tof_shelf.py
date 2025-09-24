@@ -233,7 +233,7 @@ while rclpy.ok():
                     b = y1 - m * x1
                     n_y1 = m * 90 + b
                     n_y2 = m * 150 + b
-                    pp = np.linspace(np.array([n_y1-3, 90]), np.array([n_y2-3, 150]), num=20).astype(np.int32) # opencv y, x for numpy row, col
+                    pp = np.linspace(np.array([n_y1-3, 90]), np.array([n_y2-3, 150]), num=30).astype(np.int32) # opencv y, x for numpy row, col
                     pp[:,0] = np.clip(pp[:,0], 0, 180-1)
                     pp[:,1] = np.clip(pp[:,1], 0, 240-1)
                     #pp = np.linspace(np.array([y1-3, x1]), np.array([y2-3, x2]), num=50).astype(np.int32) # opencv y, x for numpy row, col
@@ -251,27 +251,32 @@ while rclpy.ok():
                     vx = l[0].item(0)
                     vy = l[1].item(0)
                     vz = l[2].item(0)
-                    p = Point32()
-                    p.x = x
-                    p.y = y
-                    p.z = z
-                    vert_hori_points.append(p)
-                    v = Point32()
-                    v.x = vx
-                    v.y = vy
-                    v.z = vz
-                    vert_hori_points.append(v)
+                    if vx > 0.7 or vx < -0.7:
+                        # horizontal line skew angle too large
+                        vert_hori_points.append(Point32())
+                        vert_hori_points.append(Point32())
+                    else:
+                        p = Point32()
+                        p.x = x
+                        p.y = y
+                        p.z = z
+                        vert_hori_points.append(p)
+                        v = Point32()
+                        v.x = vx
+                        v.y = vy
+                        v.z = vz
+                        vert_hori_points.append(v)
 
-                    p = Point()
-                    p.x = x - vx
-                    p.y = y - vy
-                    p.z = z - vz
-                    line_list_points.append(p)
-                    p = Point()
-                    p.x = x + vx
-                    p.y = y + vy
-                    p.z = z + vz
-                    line_list_points.append(p)
+                        p = Point()
+                        p.x = x - vx
+                        p.y = y - vy
+                        p.z = z - vz
+                        line_list_points.append(p)
+                        p = Point()
+                        p.x = x + vx
+                        p.y = y + vy
+                        p.z = z + vz
+                        line_list_points.append(p)
                 else:
                     vert_hori_points.append(Point32())
                     vert_hori_points.append(Point32())
