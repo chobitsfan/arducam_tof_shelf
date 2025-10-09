@@ -88,27 +88,19 @@ while rclpy.ok():
         skip_c += 1
         if skip_c > 1:
             skip_c = 0
-            depth_buf = frame.depth_data
-            confidence_buf = frame.confidence_data
-
-            depth_buf[(confidence_buf < 60) | (depth_buf > 2000) | (depth_buf <= 0)] = 2000
-            depth_u16 = depth_buf.astype(np.uint16)
-            tof.releaseFrame(frame)
 
             header = Header()
             header.frame_id = "body"
             now_ns = time.monotonic_ns()
             header.stamp.sec = now_ns // 1_000_000_000
             header.stamp.nanosec = now_ns % 1_000_000_000
-            img = Image()
-            img.header = header
-            img.height = 180
-            img.width = 240
-            img.is_bigendian = 0
-            img.encoding = "mono16"
-            img.step = 240*2
-            img.data = depth_u16.ravel().view(np.uint8)
-            img_pub.publish(img)
+
+            depth_buf = frame.depth_data
+            confidence_buf = frame.confidence_data
+
+            depth_buf[(confidence_buf < 60) | (depth_buf > 2000) | (depth_buf <= 0)] = 2000
+            depth_u16 = depth_buf.astype(np.uint16)
+            tof.releaseFrame(frame)
 
             depth_u16 = cv2.medianBlur(depth_u16, 3)
             #depth_u16 = cv2.dilate(depth_u16, kernel)
@@ -300,6 +292,23 @@ while rclpy.ok():
                 line_list.lifetime.sec = 1
                 line_list.points = line_list_points
                 lines_pub.publish(line_list)
+
+            if hori_line is not None:
+                x1, y1, x2, y2 = hori_line
+                cv2.circle(depth_u16, (x1, y1), 10, 1800, 2)
+                cv2.circle(depth_u16, (x2, y2), 10, 1800, 2)
+            if vert_lines is not None:
+                pl, nl = vert_lines
+                cv2.rectangle(depth_u16, (pl[0], pl[1]), (nl[2], nl[3]), 1800, 2)
+            img = Image()
+            img.header = header
+            img.height = 180
+            img.width = 240
+            img.is_bigendian = 0
+            img.encoding = "mono16"
+            img.step = 240*2
+            img.data = depth_u16.ravel().view(np.uint8)
+            img_pub.publish(img)
 
 #            img.header = header
 #            img.encoding = "bgr8"
