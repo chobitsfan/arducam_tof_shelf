@@ -188,27 +188,33 @@ while rclpy.ok():
                 vx = l[0].item(0)
                 vy = l[1].item(0)
                 vz = l[2].item(0)
-                struct_dist_m = x
-                p = Point32()
-                p.x = x
-                p.y = y
-                p.z = z
-                v = Point32()
-                v.x = vx
-                v.y = vy
-                v.z = vz
-                vert_hori_points = [p, v]
 
-                p = Point()
-                p.x = x - vx
-                p.y = y - vy
-                p.z = z - vz
-                line_list_points.append(p)
-                p = Point()
-                p.x = x + vx
-                p.y = y + vy
-                p.z = z + vz
-                line_list_points.append(p)
+                if vx > 0.5 or vx < -0.5:
+                    # skew angle too large
+                    vert_hori_points = [Point32(), Point32()]
+                    vert_lines = None
+                else:
+                    struct_dist_m = x
+                    p = Point32()
+                    p.x = x
+                    p.y = y
+                    p.z = z
+                    v = Point32()
+                    v.x = vx
+                    v.y = vy
+                    v.z = vz
+                    vert_hori_points = [p, v]
+
+                    p = Point()
+                    p.x = x - vx
+                    p.y = y - vy
+                    p.z = z - vz
+                    line_list_points.append(p)
+                    p = Point()
+                    p.x = x + vx
+                    p.y = y + vy
+                    p.z = z + vz
+                    line_list_points.append(p)
 
             if hori_line is None:
                 vert_hori_points.append(Point32())
@@ -243,10 +249,11 @@ while rclpy.ok():
                     vx = l[0].item(0)
                     vy = l[1].item(0)
                     vz = l[2].item(0)
-                    if vx > 0.7 or vx < -0.7:
-                        # horizontal line skew angle too large
+                    if vx > 0.5 or vx < -0.5:
+                        # skew angle too large
                         vert_hori_points.append(Point32())
                         vert_hori_points.append(Point32())
+                        hori_line = None
                     else:
                         p = Point32()
                         p.x = x
