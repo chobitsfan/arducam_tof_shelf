@@ -39,10 +39,8 @@ GRAD_THRESH = 300
 fx = 240 / (2 * math.tan(0.5 * math.pi * 64.3 / 180));
 fy = 180 / (2 * math.tan(0.5 * math.pi * 50.4 / 180));
 
-# thanks to ludovic
 struct_width_m = 0.1
 struct_dist_m = 0.5
-struct_width_max_px = struct_width_m * fy / struct_dist_m + 5 # margin = 5px
 
 rclpy.init()
 node = rclpy.create_node('tof')
@@ -135,8 +133,10 @@ while rclpy.ok():
                     for nl in ok_lines_x_n:
                         dx = pl[0] - nl[0]
                         dy = pl[1] - nl[1]
-                        # only select vertical lines which postive & negative edges close enough
-                        if 2 < dx < struct_width_max_px and abs(dy) < 20:
+                        # calculate vertical struct width in px, thanks to ludovic
+                        struct_width_px = struct_width_m * fy / struct_dist_m
+                        # select vertical lines only if positive/negative edge separation is within a reasonable range
+                        if struct_width_px - 5 <= dx <= struct_width_px + 5 and abs(dy) < 20:
                             vert_lines = (pl, nl)
                             break
                     if vert_lines is not None:
