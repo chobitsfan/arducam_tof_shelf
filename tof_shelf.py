@@ -124,6 +124,9 @@ while rclpy.ok():
 #                for line in lines_x_n:
 #                    l = line[0]
 #                    cv2.line(edge_img, (l[0], l[1]), (l[2], l[3]), (128,255,255), 1, cv2.LINE_8)
+
+            # calculate vertical struct width in px, thanks to ludovic
+            struct_width_px = struct_width_m * fy / struct_dist_m
             vert_lines = None
             if lines_x_p is not None and lines_x_n is not None:
                 # Precompute swapped coordinates for both lines_x_p and lines_x_n
@@ -133,8 +136,6 @@ while rclpy.ok():
                     for nl in ok_lines_x_n:
                         dx = pl[0] - nl[0]
                         dy = pl[1] - nl[1]
-                        # calculate vertical struct width in px, thanks to ludovic
-                        struct_width_px = struct_width_m * fy / struct_dist_m
                         # select vertical lines only if positive/negative edge separation is within a reasonable range
                         if struct_width_px - 5 <= dx <= struct_width_px + 5 and abs(dy) < 20:
                             vert_lines = (pl, nl)
