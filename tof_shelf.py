@@ -137,7 +137,7 @@ while rclpy.ok():
                         dx = pl[0] - nl[0]
                         dy = pl[1] - nl[1]
                         # select vertical lines only if positive/negative edge separation is within a reasonable range
-                        if struct_width_px - 5 <= dx <= struct_width_px + 5 and abs(dy) < 20:
+                        if struct_width_px - 10 <= dx <= struct_width_px + 10 and abs(dy) < 20:
                             vert_lines = (pl, nl)
                             break
                     if vert_lines is not None:
