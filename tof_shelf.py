@@ -190,7 +190,7 @@ while rclpy.ok():
                 vy = l[1].item(0)
                 vz = l[2].item(0)
 
-                if abs(vx) > 0.5 or abs(struct_dist_m - x) > 0.5:
+                if abs(vx) > 0.5:
                     # skew angle too large or vertical structure not close to horizontal structure
                     vert_hori_points = [Point32(), Point32()]
                     vert_lines = None
