@@ -39,7 +39,7 @@ GRAD_THRESH = 300
 fx = 240 / (2 * math.tan(0.5 * math.pi * 64.3 / 180));
 fy = 180 / (2 * math.tan(0.5 * math.pi * 50.4 / 180));
 
-struct_width_m = 0.1
+struct_width_m = 0.05
 struct_dist_m = 0.5
 
 rclpy.init()
@@ -147,7 +147,7 @@ while rclpy.ok():
             grad = cv2.Sobel(depth_u16, cv2.CV_16S, 0, 1, -1)
             ret, grad_thresh = cv2.threshold(grad, GRAD_THRESH, 255, cv2.THRESH_BINARY)
             grad_u8 = grad_thresh.astype(np.uint8)
-            lines_y = cv2.HoughLinesP(grad_u8, 1, np.pi/180, 50, None, 80, 5)
+            lines_y = cv2.HoughLinesP(grad_u8, 1, np.pi/180, 50, None, 60, 5)
             # find the horizontal line with max length
             hori_line = None
             if lines_y is not None:
