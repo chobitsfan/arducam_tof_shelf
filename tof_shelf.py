@@ -250,7 +250,7 @@ while rclpy.ok():
                     vx = l[0].item(0)
                     vy = l[1].item(0)
                     vz = l[2].item(0)
-                    if abs(vx) > 0.5:
+                    if abs(vx) > 1:
                         # skew angle too large
                         vert_hori_points.append(Point32())
                         vert_hori_points.append(Point32())
