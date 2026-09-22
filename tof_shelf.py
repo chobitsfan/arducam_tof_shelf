@@ -112,7 +112,7 @@ while rclpy.ok():
             grad = cv2.Sobel(depth_u16, cv2.CV_16S, 1, 0, -1)
             ret, grad_thresh = cv2.threshold(grad, GRAD_THRESH, 255, cv2.THRESH_BINARY)
             grad_u8 = grad_thresh.astype(np.uint8)
-            lines_x_p = cv2.HoughLinesP(grad_u8, 1, np.pi/180, 50, None, 50, 5)
+            lines_x_p = cv2.HoughLinesP(grad_u8, 1, np.pi/180, 50, None, 40, 10)
 #            if lines_x_p is not None:
 #                for line in lines_x_p:
 #                    l = line[0]
